@@ -41,6 +41,7 @@ export type Listing = {
   boite_vitesses?: string | null;
   ville?: string | null;
   etat?: string | null;
+  image_url?: string | null;
   url?: string | null;
   similarity_score?: number | null;
 };

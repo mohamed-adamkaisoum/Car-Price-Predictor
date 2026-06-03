@@ -439,13 +439,36 @@ h2 {
   background: linear-gradient(160deg, #2a3038, #4a5568);
   display: grid;
   place-items: center;
+  position: relative;
+  overflow: hidden;
 }
 
-.listing-card-media span {
+.listing-card-media img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.listing-card-initials {
   font-size: 28px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.5);
   letter-spacing: 0.05em;
+}
+
+.image-source-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: calc(100% - 20px);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(26, 29, 35, 0.72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .listing-card-body {
@@ -551,6 +574,57 @@ h2 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0 12px;
+}
+
+.paste-panel {
+  margin-bottom: 22px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.paste-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.paste-panel-head h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.paste-panel-head p,
+.import-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.paste-panel-head svg {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.paste-box {
+  width: 100%;
+  resize: vertical;
+  min-height: 118px;
+  margin-bottom: 12px;
+}
+
+.paste-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.import-message {
+  margin-top: 10px;
 }
 
 /* Deal page */

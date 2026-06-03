@@ -103,7 +103,7 @@ def recommend_cars(
     )
     pipeline = Pipeline([("features", transformer)])
     matrix = pipeline.fit_transform(sample)
-    scores = cosine_similarity(matrix[0], matrix[1:]).ravel()
+    scores = cosine_similarity(matrix[0:1], matrix[1:]).ravel()
 
     ranked = filtered.copy()
     ranked["similarity_score"] = scores + ranked["_brand_boost"] * 0.1

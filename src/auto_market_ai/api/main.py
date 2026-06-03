@@ -115,10 +115,14 @@ def predict(car: CarInput) -> dict[str, float]:
 def deal_analysis(car: CarInput) -> dict[str, Any]:
     if car.prix is None:
         raise HTTPException(status_code=400, detail="Le champ prix est requis pour analyser un deal.")
+    if car.prix <= 0:
+        raise HTTPException(status_code=400, detail="Le prix affiche doit etre positif.")
     try:
         prediction = predict_prices([car.model_dump()])[0]
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return classify_deal(prediction, car.prix)
 
 

@@ -1,4 +1,4 @@
-import { Info, Loader2, Sparkles } from "lucide-react";
+import { Clipboard, Info, Loader2, Sparkles, Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { postJson } from "../api/client";
 import { DealBadge } from "../components/DealBadge";
@@ -22,6 +22,137 @@ const initialCar: CarInput = {
   type_vendeur: "shop",
   prix: 529000,
 };
+
+const brands = [
+  "volkswagen",
+  "renault",
+  "peugeot",
+  "dacia",
+  "hyundai",
+  "toyota",
+  "mercedes-benz",
+  "mercedes",
+  "bmw",
+  "audi",
+  "ford",
+  "fiat",
+  "citroen",
+  "nissan",
+  "kia",
+  "seat",
+  "skoda",
+  "opel",
+  "jeep",
+  "range rover",
+  "land rover",
+];
+
+const cities = [
+  "casablanca",
+  "rabat",
+  "marrakech",
+  "tanger",
+  "fes",
+  "meknes",
+  "agadir",
+  "kenitra",
+  "temara",
+  "sale",
+  "oujda",
+  "tetouan",
+  "mohammedia",
+  "el jadida",
+];
+
+const equipmentNeedles = [
+  "ABS",
+  "Airbags",
+  "Climatisation",
+  "GPS",
+  "Cuir",
+  "Radar de recul",
+  "Camera de recul",
+  "Bluetooth",
+  "Jantes aluminium",
+  "Toit ouvrant",
+];
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function parseNumber(value: string) {
+  const match = value.replace(/\u202f/g, " ").match(/\d[\d\s.,]*/);
+  if (!match) return undefined;
+  const cleaned = match[0].replace(/[^\d]/g, "");
+  return cleaned ? Number(cleaned) : undefined;
+}
+
+function findNumber(text: string, pattern: RegExp) {
+  const match = text.match(pattern);
+  return match ? parseNumber(match[0]) : undefined;
+}
+
+function parseListingText(text: string): Partial<CarInput> {
+  const normalized = normalizeText(text);
+  const patch: Partial<CarInput> = {};
+
+  const price =
+    findNumber(normalized, /\d[\d\s.,]*(?:dh|dhs|mad|dirham|dirhams)/i) ??
+    findNumber(normalized, /(?:prix|price)\D{0,12}\d[\d\s.,]*/i);
+  if (price) patch.prix = price;
+
+  const mileage = findNumber(normalized, /\d[\d\s.,]*(?:km|kilometres|kilometrage)/i);
+  if (mileage) patch.kilometrage = mileage;
+
+  const year = normalized.match(/\b(19[8-9]\d|20[0-3]\d)\b/);
+  if (year) patch.annee = Number(year[0]);
+
+  const fiscal = normalized.match(/(?:cv|chevaux|puissance fiscale)\D{0,12}(\d{1,2})/);
+  if (fiscal) patch.puissance_fiscale = fiscal[1];
+
+  if (normalized.includes("diesel")) patch.carburant = "diesel";
+  else if (normalized.includes("essence")) patch.carburant = "essence";
+  else if (normalized.includes("hybride")) patch.carburant = "hybride";
+  else if (normalized.includes("electrique")) patch.carburant = "electrique";
+
+  if (normalized.includes("automatique") || normalized.includes(" bva") || normalized.includes(" boite auto")) {
+    patch.boite_vitesses = "automatique";
+  } else if (normalized.includes("manuelle") || normalized.includes(" bvm")) {
+    patch.boite_vitesses = "manuelle";
+  }
+
+  const city = cities.find((item) => normalized.includes(item));
+  if (city) patch.ville = city;
+
+  const brand = brands.find((item) => normalized.includes(item));
+  if (brand) {
+    patch.marque = brand === "mercedes" ? "mercedes-benz" : brand;
+    const afterBrand = normalized.split(brand)[1]?.trim().split(/[\n,|/-]/)[0];
+    const model = afterBrand?.match(/^[a-z0-9][a-z0-9\s-]{1,24}/)?.[0].trim();
+    if (model && !["a vendre", "occasion", "diesel", "essence"].includes(model)) {
+      patch.modele = model;
+    }
+  }
+
+  if (normalized.includes("excellent")) patch.etat = "excellent";
+  else if (normalized.includes("tres bon")) patch.etat = "tres bon";
+  else if (normalized.includes("bon etat")) patch.etat = "bon";
+
+  if (normalized.includes("premiere main") || normalized.includes("1ere main")) patch.premiere_main = "oui";
+  else if (normalized.includes("deuxieme main") || normalized.includes("2eme main")) patch.premiere_main = "non";
+
+  const doors = normalized.match(/(\d)\s*(?:portes|porte)/);
+  if (doors) patch.nombre_portes = Number(doors[1]);
+
+  const equipment = equipmentNeedles.filter((item) => normalized.includes(normalizeText(item)));
+  if (equipment.length > 0) patch.equipements = equipment.join(", ");
+
+  return patch;
+}
 
 function Field({
   label,
@@ -69,6 +200,8 @@ function SelectField({
 
 export function DealPage() {
   const [car, setCar] = useState<CarInput>(initialCar);
+  const [pasteText, setPasteText] = useState("");
+  const [importMessage, setImportMessage] = useState("");
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [deal, setDeal] = useState<DealAnalysis | null>(null);
   const [recommendations, setRecommendations] = useState<Listing[]>([]);
@@ -95,14 +228,35 @@ export function DealPage() {
     }));
   };
 
+  const fillFromText = () => {
+    const patch = parseListingText(pasteText);
+    const found = Object.keys(patch).length;
+    if (found === 0) {
+      setImportMessage("Aucun champ reconnu. Collez le titre, le prix, l'annee, le kilometrage et la ville.");
+      return;
+    }
+    setCar((current) => ({ ...current, ...patch }));
+    setImportMessage(`${found} champs remplis automatiquement. Verifiez puis lancez l'analyse.`);
+  };
+
   const analyze = async () => {
     setLoading(true);
     setError("");
+    if (!Number.isFinite(car.prix) || car.prix <= 0) {
+      setError("Le prix affiché doit être positif.");
+      setLoading(false);
+      return;
+    }
     try {
-      const [predictResult, dealResult, recommendationResult] = await Promise.all([
+      const [predictResult, dealResult] = await Promise.all([
         postJson<Prediction>("/predict", car),
         postJson<DealAnalysis>("/deal-analysis", car),
-        postJson<{ results: Listing[] }>("/recommendations", {
+      ]);
+      setPrediction(predictResult);
+      setDeal(dealResult);
+
+      try {
+        const recommendationResult = await postJson<{ results: Listing[] }>("/recommendations", {
           budget: car.prix,
           marque: car.marque,
           modele: car.modele,
@@ -110,11 +264,11 @@ export function DealPage() {
           boite_vitesses: car.boite_vitesses,
           ville: car.ville,
           top_n: 6,
-        }),
-      ]);
-      setPrediction(predictResult);
-      setDeal(dealResult);
-      setRecommendations(recommendationResult.results ?? []);
+        });
+        setRecommendations(recommendationResult.results ?? []);
+      } catch {
+        setRecommendations([]);
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Erreur API.");
     } finally {
@@ -140,6 +294,40 @@ export function DealPage() {
 
       <div className="deal-layout">
         <form className="card form-card" onSubmit={(e) => e.preventDefault()}>
+          <div className="paste-panel">
+            <div className="paste-panel-head">
+              <div>
+                <h2>Coller une annonce</h2>
+                <p>Copiez le texte complet d'une annonce, puis laissez l'app pre-remplir les champs.</p>
+              </div>
+              <Clipboard size={20} />
+            </div>
+            <textarea
+              className="paste-box"
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              rows={5}
+              placeholder="Ex: Volkswagen Touareg 2021 diesel automatique, 143 600 km, Casablanca, 529 000 DH, cuir, GPS..."
+            />
+            <div className="paste-actions">
+              <button className="btn btn-secondary" type="button" onClick={fillFromText} disabled={!pasteText.trim()}>
+                <Wand2 size={17} />
+                Remplir les champs
+              </button>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => {
+                  setPasteText("");
+                  setImportMessage("");
+                }}
+              >
+                Effacer
+              </button>
+            </div>
+            {importMessage && <p className="import-message">{importMessage}</p>}
+          </div>
+
           <h2>Caractéristiques du véhicule</h2>
           <div className="form-grid">
             <Field label="Marque" value={car.marque} onChange={(v) => update("marque", v)} />

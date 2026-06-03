@@ -23,6 +23,7 @@ LISTING_CARD_FIELDS = [
     "boite_vitesses",
     "ville",
     "etat",
+    "image_url",
     "url",
     "similarity_score",
 ]

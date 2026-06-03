@@ -1,15 +1,53 @@
 import { ExternalLink, Fuel, Gauge, MapPin } from "lucide-react";
+import { useState } from "react";
 import type { Listing } from "../types";
 import { capitalize, formatKm, formatMAD } from "../utils/format";
 
+const brandImageQueries: Record<string, string> = {
+  audi: "audi car",
+  bmw: "bmw car",
+  dacia: "dacia duster car",
+  fiat: "fiat car",
+  ford: "ford car",
+  hyundai: "hyundai car",
+  kia: "kia car",
+  "land rover": "land rover car",
+  "mercedes-benz": "mercedes benz car",
+  mercedes: "mercedes benz car",
+  nissan: "nissan car",
+  peugeot: "peugeot car",
+  renault: "renault car",
+  "range rover": "range rover car",
+  seat: "seat car",
+  skoda: "skoda car",
+  toyota: "toyota car",
+  volkswagen: "volkswagen car",
+};
+
+function getIllustrationUrl(listing: Listing) {
+  const brand = String(listing.marque ?? "").toLowerCase();
+  const model = String(listing.modele ?? "").toLowerCase();
+  const query = encodeURIComponent(`${brandImageQueries[brand] ?? brand} ${model}`.trim() || "used car");
+  return `https://source.unsplash.com/640x360/?${query}`;
+}
+
 export function ListingCard({ listing }: { listing: Listing }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const title =
     listing.titre ?? `${capitalize(listing.marque)} ${capitalize(listing.modele)}`;
+  const imageUrl = listing.image_url || getIllustrationUrl(listing);
+  const isExactImage = Boolean(listing.image_url);
+  const initials = capitalize(listing.marque)?.slice(0, 2).toUpperCase();
 
   return (
     <article className="listing-card">
       <div className="listing-card-media">
-        <span>{capitalize(listing.marque)?.slice(0, 2).toUpperCase()}</span>
+        {!imageFailed ? (
+          <img src={imageUrl} alt={title} loading="lazy" onError={() => setImageFailed(true)} />
+        ) : (
+          <span className="listing-card-initials">{initials}</span>
+        )}
+        {!isExactImage && !imageFailed && <span className="image-source-badge">Image illustrative</span>}
       </div>
       <div className="listing-card-body">
         <div className="listing-card-top">

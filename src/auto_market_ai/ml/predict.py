@@ -46,8 +46,7 @@ def apply_market_reference(features: pd.DataFrame, artifact: dict) -> pd.DataFra
 
 def prepare_inference_frame(records: list[dict], artifact: dict | None = None) -> pd.DataFrame:
     raw = pd.DataFrame(records)
-    if "prix" not in raw.columns:
-        raw["prix"] = 100_000
+    raw["prix"] = 100_000
     clean = clean_dataset(raw)
     features = clean.reindex(columns=ML_FEATURES)
     if artifact:

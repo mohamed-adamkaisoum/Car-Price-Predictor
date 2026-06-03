@@ -46,6 +46,7 @@ FIELDNAMES = [
     "telephone",
     "date_publication",
     "description",
+    "image_url",
     "url",
 ]
 
@@ -177,6 +178,29 @@ def normalize_price(price: Any) -> tuple[str, str]:
     return clean_text(value), clean_text(currency or "DH")
 
 
+def extract_image_url(data: Any) -> str:
+    if isinstance(data, dict):
+        for key in ("url", "href", "src", "large", "medium", "small"):
+            value = data.get(key)
+            if isinstance(value, str) and value.startswith("http"):
+                return clean_text(value)
+        for key in ("images", "pictures", "photos", "media"):
+            value = data.get(key)
+            image_url = extract_image_url(value)
+            if image_url:
+                return image_url
+        for value in data.values():
+            image_url = extract_image_url(value)
+            if image_url:
+                return image_url
+    elif isinstance(data, list):
+        for item in data:
+            image_url = extract_image_url(item)
+            if image_url:
+                return image_url
+    return ""
+
+
 def row_from_listing_ad(ad: dict[str, Any]) -> dict[str, str]:
     price, currency = normalize_price(ad.get("price"))
     params, equipments = params_to_columns(ad.get("params") or {})
@@ -194,6 +218,7 @@ def row_from_listing_ad(ad: dict[str, Any]) -> dict[str, str]:
         "telephone": clean_text(get_nested(seller, "phone", "number", default="")),
         "date_publication": clean_text(ad.get("date")),
         "description": clean_text(ad.get("description")),
+        "image_url": extract_image_url(ad),
         "url": clean_text(ad.get("href")),
     }
     row.update(params)
@@ -232,6 +257,7 @@ def row_from_detail_ad(ad: dict[str, Any], fallback_url: str = "") -> dict[str, 
         "telephone": clean_text(ad.get("phone") or get_nested(seller, "phone", "number", default="")),
         "date_publication": clean_text(ad.get("listTime")),
         "description": clean_text(ad.get("description")),
+        "image_url": extract_image_url(ad),
         "url": clean_text(get_nested(ad, "friendlyUrl", "url", default=fallback_url) or fallback_url),
     }
     row.update(params)
