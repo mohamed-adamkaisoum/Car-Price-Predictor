@@ -1,5 +1,6 @@
 import { Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getJson, postJson } from "../api/client";
 import { ListingCard } from "../components/ListingCard";
 import type { Facets, Listing, SearchFilters } from "../types";
@@ -15,7 +16,14 @@ const defaultFilters: SearchFilters = {
   top_n: 24,
 };
 
+const cleanListingValue = (value?: string | number | null) => {
+  if (value == null) return "";
+  const text = String(value).trim();
+  return text.toLowerCase() === "unknown" ? "" : text;
+};
+
 export function SearchPage() {
+  const navigate = useNavigate();
   const [facets, setFacets] = useState<Facets | null>(null);
   const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
   const [results, setResults] = useState<Listing[]>([]);
@@ -75,6 +83,30 @@ export function SearchPage() {
     }
   };
 
+  const analyzeListing = (listing: Listing) => {
+    navigate("/analyse", {
+      state: {
+        autoAnalyze: true,
+        car: {
+          marque: cleanListingValue(listing.marque),
+          modele: cleanListingValue(listing.modele),
+          annee: Number(listing.annee ?? new Date().getFullYear()),
+          kilometrage: Number(listing.kilometrage ?? 0),
+          carburant: cleanListingValue(listing.carburant) || "diesel",
+          boite_vitesses: cleanListingValue(listing.boite_vitesses) || "manuelle",
+          puissance_fiscale: listing.puissance_fiscale != null ? String(listing.puissance_fiscale) : "",
+          etat: cleanListingValue(listing.etat),
+          ville: cleanListingValue(listing.ville),
+          premiere_main: cleanListingValue(listing.premiere_main),
+          nombre_portes: Number(listing.nombre_portes ?? 5),
+          equipements: cleanListingValue(listing.equipements),
+          type_vendeur: cleanListingValue(listing.type_vendeur),
+          prix: Number(listing.prix ?? filters.budget),
+        },
+      },
+    });
+  };
+
   return (
     <div className="page">
       <header className="page-header">
@@ -98,15 +130,22 @@ export function SearchPage() {
           <label className="field">
             <span>Budget maximum (DH)</span>
             <input
+              type="number"
+              min={0}
+              step={5000}
+              value={filters.budget ?? ""}
+              onChange={(e) => update("budget", e.target.value)}
+            />
+            <input
               type="range"
               min={50000}
               max={facets?.price.max ?? 1500000}
               step={5000}
-              value={filters.budget}
+              value={filters.budget ?? 0}
               onChange={(e) => update("budget", e.target.value)}
             />
             <strong className="budget-value">
-              {new Intl.NumberFormat("fr-MA").format(filters.budget)} DH
+              {new Intl.NumberFormat("fr-MA").format(filters.budget ?? 0)} DH
             </strong>
           </label>
 
@@ -225,7 +264,7 @@ export function SearchPage() {
 
           <div className="listing-grid">
             {results.map((listing, index) => (
-              <ListingCard key={`${listing.url}-${index}`} listing={listing} />
+              <ListingCard key={`${listing.url}-${index}`} listing={listing} onAnalyze={analyzeListing} />
             ))}
           </div>
         </section>

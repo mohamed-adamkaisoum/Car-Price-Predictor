@@ -361,6 +361,9 @@ h2 {
   padding: 20px;
   position: sticky;
   top: 84px;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: var(--shadow);
 }
 
@@ -525,12 +528,37 @@ h2 {
 }
 
 .listing-link {
-  margin-top: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
+  color: var(--primary);
+}
+
+.listing-actions {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.listing-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.listing-action-button:hover {
   color: var(--primary);
 }
 
@@ -848,6 +876,8 @@ h2 {
 
   .filter-panel {
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .stat-cards {

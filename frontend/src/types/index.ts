@@ -39,8 +39,13 @@ export type Listing = {
   prix?: number | null;
   carburant?: string | null;
   boite_vitesses?: string | null;
+  puissance_fiscale?: string | number | null;
   ville?: string | null;
   etat?: string | null;
+  premiere_main?: string | null;
+  nombre_portes?: number | null;
+  equipements?: string | null;
+  type_vendeur?: string | null;
   image_url?: string | null;
   url?: string | null;
   similarity_score?: number | null;

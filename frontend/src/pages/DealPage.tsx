@@ -1,5 +1,6 @@
 import { Clipboard, Info, Loader2, Sparkles, Wand2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { postJson } from "../api/client";
 import { DealBadge } from "../components/DealBadge";
 import { ListingCard } from "../components/ListingCard";
@@ -154,6 +155,11 @@ function parseListingText(text: string): Partial<CarInput> {
   return patch;
 }
 
+type DealRouteState = {
+  autoAnalyze?: boolean;
+  car?: Partial<CarInput>;
+};
+
 function Field({
   label,
   value,
@@ -199,6 +205,9 @@ function SelectField({
 }
 
 export function DealPage() {
+  const location = useLocation();
+  const routeState = location.state as DealRouteState | null;
+  const autoAnalyzeDone = useRef(false);
   const [car, setCar] = useState<CarInput>(initialCar);
   const [pasteText, setPasteText] = useState("");
   const [importMessage, setImportMessage] = useState("");
@@ -239,30 +248,30 @@ export function DealPage() {
     setImportMessage(`${found} champs remplis automatiquement. Verifiez puis lancez l'analyse.`);
   };
 
-  const analyze = async () => {
+  const analyzeCar = async (targetCar: CarInput) => {
     setLoading(true);
     setError("");
-    if (!Number.isFinite(car.prix) || car.prix <= 0) {
+    if (!Number.isFinite(targetCar.prix) || targetCar.prix <= 0) {
       setError("Le prix affiché doit être positif.");
       setLoading(false);
       return;
     }
     try {
       const [predictResult, dealResult] = await Promise.all([
-        postJson<Prediction>("/predict", car),
-        postJson<DealAnalysis>("/deal-analysis", car),
+        postJson<Prediction>("/predict", targetCar),
+        postJson<DealAnalysis>("/deal-analysis", targetCar),
       ]);
       setPrediction(predictResult);
       setDeal(dealResult);
 
       try {
         const recommendationResult = await postJson<{ results: Listing[] }>("/recommendations", {
-          budget: car.prix,
-          marque: car.marque,
-          modele: car.modele,
-          carburant: car.carburant,
-          boite_vitesses: car.boite_vitesses,
-          ville: car.ville,
+          budget: targetCar.prix,
+          marque: targetCar.marque,
+          modele: targetCar.modele,
+          carburant: targetCar.carburant,
+          boite_vitesses: targetCar.boite_vitesses,
+          ville: targetCar.ville,
           top_n: 6,
         });
         setRecommendations(recommendationResult.results ?? []);
@@ -275,6 +284,21 @@ export function DealPage() {
       setLoading(false);
     }
   };
+
+  const analyze = () => analyzeCar(car);
+
+  useEffect(() => {
+    if (!routeState?.car || autoAnalyzeDone.current) return;
+    autoAnalyzeDone.current = true;
+    const incomingCar = { ...initialCar, ...routeState.car } as CarInput;
+    setCar(incomingCar);
+    setPrediction(null);
+    setDeal(null);
+    setRecommendations([]);
+    if (routeState.autoAnalyze) {
+      void analyzeCar(incomingCar);
+    }
+  }, [routeState]);
 
   return (
     <div className="page">

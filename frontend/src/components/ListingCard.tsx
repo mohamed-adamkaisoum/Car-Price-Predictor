@@ -1,4 +1,4 @@
-import { ExternalLink, Fuel, Gauge, MapPin } from "lucide-react";
+import { ExternalLink, Fuel, Gauge, MapPin, Sparkles } from "lucide-react";
 import { useState } from "react";
 import type { Listing } from "../types";
 import { capitalize, formatKm, formatMAD } from "../utils/format";
@@ -31,10 +31,23 @@ function getIllustrationUrl(listing: Listing) {
   return `https://source.unsplash.com/640x360/?${query}`;
 }
 
-export function ListingCard({ listing }: { listing: Listing }) {
+function displayValue(value?: string | null) {
+  if (!value || value.toLowerCase() === "unknown") return "";
+  return capitalize(value);
+}
+
+export function ListingCard({
+  listing,
+  onAnalyze,
+}: {
+  listing: Listing;
+  onAnalyze?: (listing: Listing) => void;
+}) {
   const [imageFailed, setImageFailed] = useState(false);
   const title =
-    listing.titre ?? `${capitalize(listing.marque)} ${capitalize(listing.modele)}`;
+    listing.titre ??
+    ([displayValue(listing.marque), displayValue(listing.modele)].filter(Boolean).join(" ") ||
+      "Voiture d'occasion");
   const imageUrl = listing.image_url || getIllustrationUrl(listing);
   const isExactImage = Boolean(listing.image_url);
   const initials = capitalize(listing.marque)?.slice(0, 2).toUpperCase();
@@ -70,11 +83,19 @@ export function ListingCard({ listing }: { listing: Listing }) {
             <MapPin size={14} /> {capitalize(listing.ville)}
           </li>
         </ul>
-        {listing.url && (
-          <a className="listing-link" href={String(listing.url)} target="_blank" rel="noreferrer">
-            Voir l&apos;annonce <ExternalLink size={14} />
-          </a>
-        )}
+        <div className="listing-actions">
+          {onAnalyze && (
+            <button className="listing-action-button" type="button" onClick={() => onAnalyze(listing)}>
+              <Sparkles size={14} />
+              Analyser ce deal
+            </button>
+          )}
+          {listing.url && (
+            <a className="listing-link" href={String(listing.url)} target="_blank" rel="noreferrer">
+              Voir l&apos;annonce <ExternalLink size={14} />
+            </a>
+          )}
+        </div>
       </div>
     </article>
   );
