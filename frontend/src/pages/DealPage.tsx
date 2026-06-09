@@ -1,10 +1,10 @@
 import { Clipboard, Info, Loader2, Sparkles, Wand2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { postJson } from "../api/client";
 import { DealBadge } from "../components/DealBadge";
 import { ListingCard } from "../components/ListingCard";
-import type { CarInput, DealAnalysis, Listing, Prediction } from "../types";
+import type { CarInput, DealAnalysis, Listing } from "../types";
 import { dealLabel, formatMAD } from "../utils/format";
 
 const initialCar: CarInput = {
@@ -211,22 +211,10 @@ export function DealPage() {
   const [car, setCar] = useState<CarInput>(initialCar);
   const [pasteText, setPasteText] = useState("");
   const [importMessage, setImportMessage] = useState("");
-  const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [deal, setDeal] = useState<DealAnalysis | null>(null);
   const [recommendations, setRecommendations] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const insight = useMemo(() => {
-    if (!deal) return "Renseignez une annonce et lancez l'analyse pour obtenir une estimation et un verdict.";
-    if (deal.classification === "good_deal") {
-      return `Cette annonce est environ ${Math.abs(deal.percentage_difference)}% sous le prix estimé. Elle mérite une visite.`;
-    }
-    if (deal.classification === "overpriced") {
-      return `Le prix affiché dépasse l'estimation d'environ ${deal.percentage_difference}%. Négociez ou comparez les alternatives ci-dessous.`;
-    }
-    return "Le prix est proche de l'estimation du marché. Comparez le kilométrage et les équipements.";
-  }, [deal]);
 
   const update = (key: keyof CarInput, value: string) => {
     setCar((current) => ({
@@ -257,11 +245,7 @@ export function DealPage() {
       return;
     }
     try {
-      const [predictResult, dealResult] = await Promise.all([
-        postJson<Prediction>("/predict", targetCar),
-        postJson<DealAnalysis>("/deal-analysis", targetCar),
-      ]);
-      setPrediction(predictResult);
+      const dealResult = await postJson<DealAnalysis>("/deal-analysis", targetCar);
       setDeal(dealResult);
 
       try {
@@ -292,7 +276,6 @@ export function DealPage() {
     autoAnalyzeDone.current = true;
     const incomingCar = { ...initialCar, ...routeState.car } as CarInput;
     setCar(incomingCar);
-    setPrediction(null);
     setDeal(null);
     setRecommendations([]);
     if (routeState.autoAnalyze) {
@@ -400,38 +383,26 @@ export function DealPage() {
         <section className="card result-card">
           <div className="result-card-head">
             <div>
-              <p className="eyebrow">Estimation ML</p>
-              <h2>{formatMAD(prediction?.predicted_price)}</h2>
+              <p className="eyebrow">Analyse du deal</p>
+              <h2>Verdict</h2>
             </div>
             <DealBadge classification={deal?.classification} />
           </div>
 
-          <div className="price-range">
-            <span>{formatMAD(prediction?.estimated_low)}</span>
-            <div className="price-range-bar" />
-            <span>{formatMAD(prediction?.estimated_high)}</span>
-          </div>
-
           <div className="stat-row">
-            <div>
-              <span>Prix affiché</span>
-              <strong>{formatMAD(car.prix)}</strong>
-            </div>
-            <div>
-              <span>Écart</span>
-              <strong>{formatMAD(deal?.difference)}</strong>
+            <div className="stat-highlight">
+              <span>Prix prédit</span>
+              <strong>{deal ? formatMAD(deal.predicted_price) : "—"}</strong>
             </div>
             <div>
               <span>Verdict</span>
               <strong>{dealLabel(deal?.classification)}</strong>
             </div>
             <div>
-              <span>Delta</span>
-              <strong>{deal ? `${deal.percentage_difference}%` : "—"}</strong>
+              <span>Écart</span>
+              <strong>{deal ? formatMAD(deal.difference) : "—"}</strong>
             </div>
           </div>
-
-          <p className="insight-text">{insight}</p>
         </section>
       </div>
 

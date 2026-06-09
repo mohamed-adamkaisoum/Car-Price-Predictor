@@ -4,20 +4,16 @@ __pycache__/
 *$py.class
 
 # Data files (scraped datasets, logs, temporary files)
-data/*.csv
-data/*.xlsx
 data/*.log
 data/*.lnk
-data/processed/
 data/scrape_30000.log
 data/scrape_30000_resume.log
 
 # Trained models
-models/*.joblib
 models/archive/
 
 # Reports and temporary files
-reports/price_model_metrics.json
+# Note: model metrics are tracked in repository for reproducibility
 
 # Frontend dependencies and builds
 frontend/node_modules/
